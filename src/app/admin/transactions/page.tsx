@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { SimpleNav } from '@/components/simple-nav';
-import { Table } from '@/components/card';
 
 export default function AdminTransactionsPage() {
   const [tx, setTx] = useState<any[]>([]);
