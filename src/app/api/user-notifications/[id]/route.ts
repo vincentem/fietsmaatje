@@ -4,7 +4,7 @@ import { markUserNotificationRead } from '@/lib/user-notifications';
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const authHeader = request.headers.get('authorization');
   if (!authHeader) {
@@ -17,13 +17,14 @@ export async function PATCH(
     return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
   }
 
-  const id = Number(params.id);
-  if (!Number.isFinite(id)) {
+  const { id } = await params;
+  const notificationId = Number(id);
+  if (!Number.isFinite(notificationId)) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 });
   }
 
   try {
-    const updated = await markUserNotificationRead(decoded.id, id);
+    const updated = await markUserNotificationRead(decoded.id, notificationId);
     if (!updated) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }

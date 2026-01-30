@@ -3,7 +3,10 @@ import { query } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
 import { notifyEvent } from '@/lib/notify';
 
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const authHeader = request.headers.get('authorization');
     if (!authHeader) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -11,7 +14,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     const decoded = verifyToken(token);
     if (!decoded || decoded.role !== 'ADMIN') return NextResponse.json({ error: 'Admin required' }, { status: 403 });
 
-    const { id } = await Promise.resolve(params);
+    const { id } = await params;
     const userId = Number(id);
     const { delta_cents = 0, note = '' } = await request.json();
     if (!delta_cents) return NextResponse.json({ error: 'delta_cents required' }, { status: 400 });
