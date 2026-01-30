@@ -94,29 +94,29 @@ export async function PUT(
 
     const { name, password, role, is_active } = await request.json();
     const updates: any[] = [];
-    const params: any[] = [];
+    const queryParams: any[] = [];
     let paramIndex = 1;
 
     if (name !== undefined) {
       updates.push(`name = $${paramIndex++}`);
-      params.push(name);
+      queryParams.push(name);
     }
 
     if (password !== undefined) {
       const passwordHash = await hashPassword(password);
       updates.push(`password_hash = $${paramIndex++}`);
-      params.push(passwordHash);
+      queryParams.push(passwordHash);
     }
 
     // Only admins can change role and active status
     if (decoded.role === 'ADMIN') {
       if (role !== undefined) {
         updates.push(`role = $${paramIndex++}`);
-        params.push(role);
+        queryParams.push(role);
       }
       if (is_active !== undefined) {
         updates.push(`is_active = $${paramIndex++}`);
-        params.push(is_active);
+        queryParams.push(is_active);
       }
     }
 
@@ -128,11 +128,11 @@ export async function PUT(
     }
 
     updates.push(`updated_at = CURRENT_TIMESTAMP`);
-    params.push(userId);
+    queryParams.push(userId);
 
     const result = await query(
       `UPDATE users SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING id, email, name, role, is_active, created_at`,
-      params
+      queryParams
     );
 
     if (result.rows.length === 0) {
