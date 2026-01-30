@@ -10,6 +10,7 @@ interface Props {
   setSelectedDate: (d: string) => void;
   setDateIsOpen?: (open: boolean | null) => void;
   maxMonthsAhead?: number; // how many months ahead the user can navigate
+  daysToShow?: number;
 }
 
 interface HoursData {
