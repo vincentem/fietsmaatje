@@ -1,9 +1,13 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { notifyEvent } from '@/lib/notify';
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
-  const bikeId = Number(params.id);
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const bikeId = Number(id);
   const body = await req.json();
   const { status } = body;
   if (!status) return NextResponse.json({ error: 'status required' }, { status: 400 });
