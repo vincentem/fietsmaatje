@@ -184,7 +184,13 @@ export default function ManageUsersPage() {
                         if (isNaN(cents)) return alert('Ongeldig bedrag');
                         try {
                           const res = await fetch(`/api/users/${user.id}/balance`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ delta_cents: cents, note: 'Admin adjustment' }) });
-                          if (res.ok) { fetchUsers(token); } else { alert('Saldo bijwerken mislukt'); }
+                          if (res.ok) {
+                            if (token) {
+                              fetchUsers(token);
+                            }
+                          } else {
+                            alert('Saldo bijwerken mislukt');
+                          }
                         } catch (err) { console.error(err); alert('Fout'); }
                       }}>Saldo aanpassen</button>
                       <button className="text-red-600 hover:text-red-700">Deactiveren</button>
