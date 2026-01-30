@@ -1,0 +1,215 @@
+:root {
+  --color-primary: #2563eb;
+  --color-primary-600: #1d4ed8;
+  --color-accent: #0f766e;
+  --color-accent-600: #0b5f59;
+  --color-accent-200: rgba(15, 118, 110, 0.25);
+  --color-bg: #ffffff;
+  --color-surface: #f8f8f8;
+  --radius-lg: 12px;
+  --shadow-sm: 0 1px 2px rgba(16,24,40,0.04);
+  --shadow-md: 0 6px 20px rgba(2,6,23,0.06);
+}
+/* Microinteractions */
+.animate-fade-in { animation: fadeIn 180ms ease both; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+.toast {
+  position: fixed; right: 1rem; top: 1rem; z-index: 60; background: var(--color-bg); padding: .75rem 1rem; border-radius: 10px; box-shadow: var(--shadow-md);
+}
+
+.skeleton { background: linear-gradient(90deg,#f3f4f6 25%,#eaecef 37%, #f3f4f6 63%); background-size: 400% 100%; animation: shimmer 1.2s linear infinite; border-radius: 8px; }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+/* Form helpers */
+.field-error input, .field-error textarea, .field-error select { border-color: #dc2626; box-shadow: 0 6px 18px rgba(220,38,38,0.06); }
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  font-size: 18px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f5f7fb;
+  background-image:
+    radial-gradient(1200px 500px at 10% -10%, rgba(15,118,110,0.16), transparent 60%),
+    radial-gradient(900px 400px at 110% 10%, rgba(37,99,235,0.18), transparent 55%),
+    linear-gradient(180deg, rgba(255,255,255,0.9) 0%, rgba(248,248,248,0.9) 100%);
+  background-attachment: fixed;
+  color: #1a1a1a;
+  line-height: 1.6;
+}
+
+.emoji-icon {
+  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', sans-serif;
+  line-height: 1;
+}
+
+/* Buttons & Controls */
+button {
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(16,24,40,0.04), 0 6px 20px rgba(2,6,23,0.06);
+  min-height: 44px;
+}
+
+/* Accent button styling */
+.btn-primary {
+  background: var(--color-accent);
+  color: #ffffff;
+}
+
+.btn-primary:hover {
+  background: var(--color-accent-600);
+}
+
+.btn-primary:focus-visible {
+  box-shadow: 0 0 0 4px var(--color-accent-200);
+}
+
+input, textarea, select {
+  border: 1px solid #64748b; /* higher contrast border (slate-500) */
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  background: #ffffff;
+  color: #0b1220; /* very dark input text for max readability */
+  transition: box-shadow 140ms ease, border-color 140ms ease, transform 80ms ease;
+  box-shadow: 0 1px 0 rgba(2,6,23,0.03);
+}
+
+input::placeholder, textarea::placeholder, select::placeholder {
+  color: #4b5563; /* darker placeholder for readability */
+  opacity: 1;
+}
+
+/* stronger focus and subtle lift on focus */
+input:focus, textarea:focus, select:focus {
+  box-shadow: 0 12px 30px rgba(37,99,235,0.14), 0 1px 0 rgba(2,6,23,0.04);
+  border-color: var(--color-primary-600);
+  transform: translateY(-1px);
+}
+
+/* Tables */
+table { border-collapse: separate; border-spacing: 0; }
+th, td { padding: 0.75rem 1rem; }
+thead th { background: #eef2ff; color: #0f172a; font-weight: 700; }
+tbody tr { transition: background 120ms ease; color: #0f172a; }
+tbody tr:hover { background: #ffffff; }
+
+/* Cards */
+.card { background: #fff; border-radius: 12px; box-shadow: 0 6px 20px rgba(2,6,23,0.06); padding: 1rem; }
+
+/* Higher-contrast surface cards (avoid white-on-white) */
+.surface-card {
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  box-shadow: 0 10px 30px rgba(2, 6, 23, 0.10), 0 1px 2px rgba(2, 6, 23, 0.06);
+}
+
+/* Staggered entrance helpers */
+.staggered > * {
+  animation: fadeIn 220ms ease both;
+}
+.staggered > *:nth-child(1) { animation-delay: 0ms; }
+.staggered > *:nth-child(2) { animation-delay: 40ms; }
+.staggered > *:nth-child(3) { animation-delay: 80ms; }
+.staggered > *:nth-child(4) { animation-delay: 120ms; }
+.staggered > *:nth-child(5) { animation-delay: 160ms; }
+.staggered > *:nth-child(6) { animation-delay: 200ms; }
+.staggered > *:nth-child(7) { animation-delay: 240ms; }
+.staggered > *:nth-child(8) { animation-delay: 280ms; }
+
+/* Typography */
+h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 1.5rem;
+  color: #1a1a1a;
+}
+
+h2 {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.3;
+  margin-bottom: 1.25rem;
+  color: #1a1a1a;
+}
+
+h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.4;
+  margin-bottom: 1rem;
+  color: #1a1a1a;
+}
+
+p, label, span {
+  font-size: 1.125rem;
+  color: #1a1a1a;
+}
+
+/* High contrast text */
+.text-muted {
+  color: #374151; /* slate-700 for improved contrast */
+  font-size: 1rem;
+}
+
+/* Remove light gray - use bold colors */
+.text-light {
+  color: #374151;
+  font-weight: 600;
+}
+
+/* Utility classes for design philosophy */
+.container-safe {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.whitespace-breathing {
+  padding: 3rem 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .whitespace-breathing {
+    padding-top: 0.5rem;
+    padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+  }
+}
+
+/* Focus states for accessibility */
+input:focus,
+select:focus,
+textarea:focus,
+button:focus {
+  outline: 3px solid #2563eb;
+  outline-offset: 2px;
+}
+
+/* Remove default select styling for better control */
+select {
+  appearance: none;
+  padding-right: 2.5rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  background-size: 1.25rem;
+}
