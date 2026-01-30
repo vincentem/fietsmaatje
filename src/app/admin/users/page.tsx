@@ -10,6 +10,7 @@ interface User {
   name: string;
   role: string;
   is_active: boolean;
+  balance_cents?: number;
 }
 
 export default function ManageUsersPage() {
