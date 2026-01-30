@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Modal from '@/components/modal';
-import { FormField } from '@/components/form-field';
+import FormField from '@/components/form-field';
 import { Button } from '@/components/button';
 
 export default function MaintenanceLogModal({ bikeId, onClose, onSaved }: { bikeId: number | null; onClose: () => void; onSaved?: (res: any) => void }) {
@@ -39,7 +39,7 @@ export default function MaintenanceLogModal({ bikeId, onClose, onSaved }: { bike
   return (
     <Modal onClose={onClose} title={`Onderhoud toevoegen voor fiets #${bikeId}`}>
       <div className="space-y-3">
-        <FormField label="Type">
+        <FormField label="Type" name="maintenance-type">
           <select value={type} onChange={(e) => setType(e.target.value)} className="w-full">
             <option value="inspection">Inspectie</option>
             <option value="repair">Reparatie</option>
@@ -47,7 +47,7 @@ export default function MaintenanceLogModal({ bikeId, onClose, onSaved }: { bike
           </select>
         </FormField>
 
-        <FormField label="Nieuwe status">
+        <FormField label="Nieuwe status" name="maintenance-status">
           <select value={statusAfter} onChange={(e) => setStatusAfter(e.target.value)} className="w-full">
             <option value="available">Beschikbaar</option>
             <option value="needs_inspection">Inspectie nodig</option>
@@ -56,7 +56,7 @@ export default function MaintenanceLogModal({ bikeId, onClose, onSaved }: { bike
           </select>
         </FormField>
 
-        <FormField label="Notities">
+        <FormField label="Notities" name="maintenance-notes">
           <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full h-28" />
         </FormField>
 

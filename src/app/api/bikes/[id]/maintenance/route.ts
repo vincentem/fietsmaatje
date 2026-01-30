@@ -1,9 +1,13 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { notifyEvent } from '@/lib/notify';
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
-  const bikeId = Number(params.id);
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const bikeId = Number(id);
   try {
     const res = await query('SELECT * FROM maintenance_logs WHERE bike_id = $1 ORDER BY created_at DESC', [bikeId]);
     return NextResponse.json(res.rows);
@@ -13,8 +17,12 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   }
 }
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
-  const bikeId = Number(params.id);
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const bikeId = Number(id);
   const body = await req.json();
   const { mechanic_id, type = 'inspection', status_after, notes, duration_minutes, parts = null, attachments = null } = body;
 
