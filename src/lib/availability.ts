@@ -11,6 +11,8 @@ interface AvailabilityCheckResult {
   reason?: string;
 }
 
+const DEFAULT_TIME_ZONE = 'Europe/Amsterdam';
+
 /**
  * Check if a time is aligned to 30-minute increments
  */
@@ -97,6 +99,39 @@ function minutesToDate(minutes: number, date: Date): Date {
   return newDate;
 }
 
+function getZonedParts(date: Date, timeZone: string) {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).formatToParts(date);
+
+  const map: Record<string, number> = {};
+  for (const part of parts) {
+    if (part.type !== 'literal') {
+      map[part.type] = Number(part.value);
+    }
+  }
+
+  return map as { year: number; month: number; day: number; hour: number; minute: number; second: number };
+}
+
+function getMinutesInZone(date: Date, timeZone: string): number {
+  const parts = getZonedParts(date, timeZone);
+  return parts.hour * 60 + parts.minute;
+}
+
+function isSameDayInZone(a: Date, b: Date, timeZone: string): boolean {
+  const pa = getZonedParts(a, timeZone);
+  const pb = getZonedParts(b, timeZone);
+  return pa.year === pb.year && pa.month === pb.month && pa.day === pb.day;
+}
+
 /**
  * Check if reservation times are within location opening hours
  */
@@ -107,7 +142,7 @@ export async function checkOpeningHours(
 ): Promise<AvailabilityCheckResult> {
   try {
     // Check if same day
-    if (startTime.toDateString() !== endTime.toDateString()) {
+    if (!isSameDayInZone(startTime, endTime, DEFAULT_TIME_ZONE)) {
       return { available: false, reason: 'Reservations cannot span multiple days' };
     }
 
@@ -123,9 +158,8 @@ export async function checkOpeningHours(
 
     const startMinutes = timeToMinutes(hours.open_time);
     const endMinutes = timeToMinutes(hours.close_time);
-    const reservationStartMinutes =
-      startTime.getHours() * 60 + startTime.getMinutes();
-    const reservationEndMinutes = endTime.getHours() * 60 + endTime.getMinutes();
+    const reservationStartMinutes = getMinutesInZone(startTime, DEFAULT_TIME_ZONE);
+    const reservationEndMinutes = getMinutesInZone(endTime, DEFAULT_TIME_ZONE);
 
     if (
       reservationStartMinutes < startMinutes ||
