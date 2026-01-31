@@ -1,10 +1,10 @@
-import { Pool, PoolClient } from 'pg';
+import { Pool } from 'pg';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
-pool.on('error', (err) => {
+pool.on('error', (err: Error) => {
   console.error('Unexpected error on idle client', err);
 });
 
@@ -12,7 +12,7 @@ export const query = (text: string, params?: any[]) => {
   return pool.query(text, params);
 };
 
-export const getClient = async (): Promise<PoolClient> => {
+export const getClient = async (): Promise<any> => {
   return pool.connect();
 };
 
