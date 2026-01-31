@@ -37,7 +37,7 @@ export default function MaintenanceLogModal({ bikeId, onClose, onSaved }: { bike
   };
 
   return (
-    <Modal onClose={onClose} title={`Onderhoud toevoegen voor fiets #${bikeId}`}>
+    <Modal open={true} onClose={onClose} title={`Onderhoud toevoegen voor fiets #${bikeId}`}>
       <div className="space-y-3">
         <FormField label="Type" name="maintenance-type">
           <select value={type} onChange={(e) => setType(e.target.value)} className="w-full">
