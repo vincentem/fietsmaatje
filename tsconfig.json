@@ -39,6 +39,9 @@
     ".next/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "postgres_portable",
+    "postgres_data",
+    "node_portable"
   ]
 }

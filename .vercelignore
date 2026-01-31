@@ -1,0 +1,6 @@
+node_modules
+.next
+postgres_portable
+postgres_data
+node_portable
+postgres_log.txt
