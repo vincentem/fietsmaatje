@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { SimpleNav } from '@/components/simple-nav';
@@ -10,6 +10,7 @@ import { Card, CardTitle, CardDescription } from '@/components/card';
 import { Alert } from '@/components/alert';
 import DateCalendar from '@/components/date-calendar';
 import { format } from 'date-fns';
+import { nl } from 'date-fns/locale';
 
 interface Location {
   id: number;
@@ -31,7 +32,38 @@ interface LocationHours {
   is_closed: boolean;
 }
 
-type WizardStep = 'location' | 'datetime' | 'duration' | 'bike' | 'review';
+type WizardStep = 'location' | 'datetime' | 'bike' | 'review';
+
+type SummaryProps = {
+  location: Location | null;
+  date: string;
+  time: string;
+  duration: string;
+  bike: Bike | null;
+  feeCents: number;
+  isClosed: boolean | null;
+};
+
+const STEP_ORDER: WizardStep[] = ['location', 'datetime', 'bike', 'review'];
+
+const STEP_META: Record<WizardStep, { title: string; description: string }> = {
+  location: {
+    title: 'Kies een locatie',
+    description: 'Selecteer waar je wilt starten. Favorieten helpen je sneller boeken.',
+  },
+  datetime: {
+    title: 'Plan datum en tijd',
+    description: 'Controleer openingstijden en kies een tijdslot passend bij je dag.',
+  },
+  bike: {
+    title: 'Kies je duo fiets',
+    description: 'Vergelijk beschikbare fietsen en markeer je favoriet voor later.',
+  },
+  review: {
+    title: 'Bevestig reservering',
+    description: 'Controleer je gegevens en bevestig je rit met één klik.',
+  },
+};
 
 export default function FindBikePage() {
   const { token, user } = useAuth();
@@ -67,6 +99,16 @@ export default function FindBikePage() {
     { label: 'Berichten', href: '/volunteer/notifications', icon: <BellIcon /> },
     { label: 'Probleem melden', href: '/volunteer/report-issue', icon: <AlertIcon /> },
   ];
+
+  const summaryData: SummaryProps = {
+    location: selectedLocation,
+    date: selectedDate,
+    time: selectedTime,
+    duration: selectedDuration,
+    bike: selectedBike,
+    feeCents: reservationFeeCents,
+    isClosed: dateIsOpen === null ? null : !dateIsOpen,
+  };
 
   const getFavoritesKey = () => `favorites:${user?.id ?? 'guest'}`;
 
@@ -394,65 +436,81 @@ export default function FindBikePage() {
     const favoriteLocation = favoriteLocationId
       ? locations.find((loc) => loc.id === favoriteLocationId)
       : null;
+
     return (
-      <>
-        <SimpleNav items={navItems} />
-        <main className="container-safe whitespace-breathing">
-          <div className="max-w-2xl mx-auto pb-24 md:pb-0">
-            <h1>Kies een locatie</h1>
-            <p className="text-lg text-gray-600 mb-8">Waar wil je fietsen?</p>
+      <BookingLayout
+        navItems={navItems}
+        step={step}
+        title={STEP_META.location.title}
+        description={STEP_META.location.description}
+        summary={summaryData}
+      >
+        {error && <Alert type="error">{error}</Alert>}
 
-            {error && <Alert type="error">{error}</Alert>}
-
-            {favoriteLocation && (
-              <Card className="mb-6 bg-blue-50 border-blue-300">
-                <CardTitle>Favoriete locatie</CardTitle>
-                <CardDescription>{favoriteLocation.name} - {favoriteLocation.address}</CardDescription>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <Button onClick={() => handleSelectLocation(favoriteLocation)}>Gebruik favoriet</Button>
-                  <Button variant="secondary" onClick={() => updateFavorites({ locationId: null })}>Verwijderen</Button>
-                </div>
-              </Card>
-            )}
-
-            <div className="space-y-4 staggered">
-              {locations.map((location) => (
-                <Card
-                  key={location.id}
-                  selectable
-                  onClick={() => handleSelectLocation(location)}
-                  className="cursor-pointer"
-                >
-                  <CardTitle className="flex items-center justify-between gap-2">
-                    <span>{location.name}</span>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        updateFavorites({ locationId: location.id });
-                      }}
-                      className={`text-xs font-semibold px-2 py-1 rounded-full border ${
-                        favoriteLocationId === location.id
-                          ? 'bg-blue-600 text-white border-blue-600'
-                          : 'bg-white text-blue-700 border-blue-300 hover:border-blue-500'
-                      }`}
-                    >
-                      {favoriteLocationId === location.id ? 'Favoriet' : 'Als favoriet'}
-                    </button>
-                  </CardTitle>
-                  <CardDescription>{location.address}</CardDescription>
-                </Card>
-              ))}
+        {favoriteLocation && (
+          <Card className="relative overflow-hidden rounded-[28px] border border-emerald-200 bg-emerald-50/80 p-6 shadow-sm surface-card">
+            <CardTitle className="flex items-center justify-between text-2xl text-emerald-900">
+              Favoriete locatie
+              <span className="text-sm font-semibold text-emerald-700">Altijd bovenaan</span>
+            </CardTitle>
+            <CardDescription className="mt-2 text-gray-700">
+              {favoriteLocation.name} - {favoriteLocation.address}
+            </CardDescription>
+            <div className="mt-5 flex flex-wrap gap-3">
+              <Button onClick={() => handleSelectLocation(favoriteLocation)} fullWidth={false} className="w-full sm:w-auto">
+                Gebruik favoriet
+              </Button>
+              <Button
+                variant="secondary"
+                fullWidth={false}
+                onClick={() => updateFavorites({ locationId: null })}
+                className="w-full sm:w-auto"
+              >
+                Verwijderen
+              </Button>
             </div>
-          </div>
-        </main>
-      </>
+          </Card>
+        )}
+
+        <div className="grid gap-4 md:grid-cols-2">
+          {locations.map((location) => (
+            <Card
+              key={location.id}
+              selectable
+              onClick={() => handleSelectLocation(location)}
+              className="cursor-pointer rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-300 surface-card"
+            >
+              <CardTitle className="flex items-center justify-between gap-3 text-2xl text-gray-900">
+                <span>{location.name}</span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    updateFavorites({ locationId: location.id });
+                  }}
+                  className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                    favoriteLocationId === location.id
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-white/80 text-emerald-700 border border-emerald-200 hover:border-emerald-400'
+                  }`}
+                >
+                  {favoriteLocationId === location.id ? 'Favoriet' : 'Als favoriet'}
+                </button>
+              </CardTitle>
+              <CardDescription className="mt-2 text-gray-600">{location.address}</CardDescription>
+              <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
+                <span>Selecteer locatie</span>
+                <span className="font-semibold text-emerald-600">→</span>
+              </div>
+            </Card>
+          ))}
+        </div>
+      </BookingLayout>
     );
   }
 
   // STEP 2: Date & Time Selection
   if (step === 'datetime') {
-    // Generate time slots based on location hours
     const times: string[] = [];
     const [openHour, openMin] = (locationHours?.open_time || '09:00').split(':').map(Number);
     const [closeHour, closeMin] = (locationHours?.close_time || '17:00').split(':').map(Number);
@@ -460,7 +518,6 @@ export default function FindBikePage() {
     for (let h = openHour; h <= closeHour; h++) {
       for (let m of [0, 30]) {
         const timeStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-        // Only add if it's before closing time
         if (h < closeHour || (h === closeHour && m < closeMin)) {
           times.push(timeStr);
         }
@@ -468,29 +525,32 @@ export default function FindBikePage() {
     }
 
     return (
-      <>
-        <SimpleNav items={navItems} />
-        <main className="container-safe whitespace-breathing">
-          <div className="max-w-2xl mx-auto">
-            <Button variant="secondary" onClick={goBack} className="mb-6">
-              Terug
-            </Button>
+      <BookingLayout
+        navItems={navItems}
+        step={step}
+        title={STEP_META.datetime.title}
+        description={STEP_META.datetime.description}
+        onBack={goBack}
+        summary={summaryData}
+      >
+        {error && <Alert type="error">{error}</Alert>}
 
-            <h1>Kies datum en tijd</h1>
-            <p className="text-lg text-gray-600 mb-8">
-              {selectedLocation?.name} is {locationHours?.is_closed ? 'GESLOTEN' : `open van ${locationHours?.open_time} tot ${locationHours?.close_time}`}
-            </p>
-
-            {error && <Alert type="error">{error}</Alert>}
-
-            <div className="mb-8">
-              <label className="flex items-center justify-between text-2xl font-bold mb-4">
-                <span>Datum</span>
-                <span className={`px-3 py-1 rounded-full text-sm font-semibold ${dateIsOpen ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                  {dateIsOpen ? 'Open' : 'Gesloten'}
-                </span>
-              </label>
-              {/* Calendar showing next 30 days with open/closed highlights */}
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
+          <Card className="rounded-[28px] border border-white/80 bg-white/95 p-6 shadow-sm surface-card">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-2xl">Datum</CardTitle>
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                  dateIsOpen ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                }`}
+              >
+                {dateIsOpen ? 'Open' : 'Gesloten'}
+              </span>
+            </div>
+            <CardDescription className="mt-2 text-gray-600">
+              {selectedLocation?.name} - {locationHours?.open_time} - {locationHours?.close_time}
+            </CardDescription>
+            <div className="mt-4 rounded-3xl border border-white/70 bg-white p-4 shadow-inner">
               <DateCalendar
                 locationId={selectedLocation?.id ?? null}
                 selectedDate={selectedDate}
@@ -498,38 +558,49 @@ export default function FindBikePage() {
                 setDateIsOpen={(open) => setDateIsOpen(open)}
                 daysToShow={30}
               />
-            {locationHours && !dateIsOpen && (
-              <p className="mt-2 text-sm text-red-700">Deze locatie is gesloten op de gekozen datum.</p>
+            </div>
+            {locationHours && dateIsOpen === false && (
+              <p className="mt-3 text-sm font-semibold text-rose-600">
+                Deze locatie is gesloten op de gekozen datum.
+              </p>
             )}
-          </div>
+          </Card>
 
-            <div className="mb-8">
-              <label className="block text-2xl font-bold mb-4">Duur</label>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="space-y-6">
+            <Card className="rounded-[28px] border border-white/80 bg-white/95 p-6 shadow-sm surface-card">
+              <CardTitle className="text-2xl">Duur</CardTitle>
+              <CardDescription className="mt-1 text-gray-600">
+                Kies hoeveel uren je wilt fietsen. Beschikbaarheid past zich automatisch aan.
+              </CardDescription>
+              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {[1, 2, 3, 4, 5, 6, 7, 8].map((hours) => (
                   <button
                     key={hours}
                     onClick={() => setSelectedDuration(hours.toString())}
-                    className={`p-4 rounded-lg font-bold text-xl transition-all ${
+                    className={`rounded-2xl border-2 px-4 py-3 text-lg font-semibold transition ${
                       selectedDuration === hours.toString()
-                        ? 'bg-blue-600 text-white border-2 border-blue-600'
-                        : 'bg-white text-gray-900 border-2 border-gray-300 hover:border-blue-400'
+                        ? 'border-emerald-500 bg-emerald-500 text-white shadow-lg'
+                        : 'border-gray-200 bg-white text-gray-900 hover:border-emerald-300'
                     }`}
                   >
-                    {hours}h
+                    {hours} uur
                   </button>
                 ))}
               </div>
-              <p className="text-sm text-gray-600 mt-3">Beschikbaarheid past zich aan op basis van de duur.</p>
-            </div>
+            </Card>
 
-            <div className="mb-8">
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-2xl font-bold">Starttijd</label>
-                {timeAvailabilityLoading && <span className="text-xs text-gray-500">Controleren...</span>}
+            <Card className="rounded-[28px] border border-white/80 bg-white/95 p-6 shadow-sm surface-card">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-2xl">Starttijd</CardTitle>
+                {timeAvailabilityLoading && (
+                  <span className="text-xs font-semibold text-gray-500">Beschikbaarheid controleren...</span>
+                )}
               </div>
-              <p className="text-sm text-gray-600 mb-3">Kies een starttijd. De eindtijd past zich aan op basis van de gekozen duur.</p>
-              <div className="space-y-2">
+              <CardDescription className="mt-1 text-gray-600">
+                Selecteer een starttijd. We tonen meteen het aantal beschikbare fietsen.
+              </CardDescription>
+
+              <div className="mt-4 max-h-[34rem] space-y-3 overflow-y-auto pr-1">
                 {times.map((time) => {
                   const slot = timeAvailability?.[time];
                   const available = dateIsOpen === false ? false : slot?.available;
@@ -538,93 +609,67 @@ export default function FindBikePage() {
                   endTime.setHours(h, m, 0, 0);
                   endTime.setHours(endTime.getHours() + parseInt(selectedDuration));
                   const endTimeStr = endTime.toTimeString().slice(0, 5);
+
+                  const detailTextClass = selectedTime === time ? 'text-white/80' : 'text-gray-500';
+                  const availabilityClass =
+                    selectedTime === time
+                      ? available
+                        ? 'text-emerald-100'
+                        : 'text-rose-100'
+                      : available
+                      ? 'text-emerald-600'
+                      : 'text-rose-600';
+
                   return (
                     <button
                       key={time}
                       onClick={() => setSelectedTime(time)}
                       disabled={dateIsOpen === false || available === false}
-                      className={`w-full text-left rounded-lg border p-4 transition-all ${
+                      className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left transition ${
                         selectedTime === time
-                          ? 'bg-blue-600 text-white border-blue-600'
+                          ? 'border-blue-500 bg-blue-500 text-white shadow-lg'
                           : dateIsOpen === false || available === false
-                          ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
-                          : 'bg-white text-gray-900 border-gray-300 hover:border-blue-400'
+                          ? 'cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400'
+                          : 'border-gray-200 bg-white text-gray-900 hover:border-blue-300'
                       }`}
                       title={
                         dateIsOpen === false
                           ? 'Gesloten'
                           : slot
-                          ? `${slot.count ?? 0} beschikbaar`
+                          ? `${slot.count ?? 0} fietsen beschikbaar`
                           : 'Beschikbaarheid onbekend'
                       }
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="text-lg font-bold">
-                          {time} {'->'} {endTimeStr}
-                        </div>
-                        <div className={`text-sm font-semibold ${available ? 'text-green-700' : 'text-red-600'}`}>
-                          {available ? `${slot?.count ?? 0} fietsen` : 'Niet beschikbaar'}
-                        </div>
+                      >
+                      <div>
+                        <p className="text-lg font-semibold">
+                          {time} - {endTimeStr}
+                        </p>
+                        <p className={`text-xs ${detailTextClass}`}>
+                          {slot?.count ?? 0} fietsen beschikbaar
+                        </p>
                       </div>
+                      <span className={`text-sm font-semibold ${availabilityClass}`}>
+                        {available ? 'Beschikbaar' : 'Niet beschikbaar'}
+                      </span>
                     </button>
                   );
                 })}
               </div>
-            </div>
-
-            <div className="md:static fixed bottom-20 left-0 right-0 z-40 border-t border-gray-200 bg-white/95 px-6 py-4 backdrop-blur md:border-0 md:bg-transparent md:p-0">
-              <div className="max-w-2xl mx-auto">
-                <Button onClick={handleSelectDateTime} size="lg" disabled={isLoading} className="w-full md:w-auto">
-                  {isLoading ? 'Beschikbaarheid controleren...' : 'Doorgaan'}
-                </Button>
-              </div>
-            </div>
+            </Card>
           </div>
-        </main>
-      </>
-    );
-  }
+        </div>
 
-  // STEP 3: Duration Selection
-  if (step === 'duration') {
-    return (
-      <>
-        <SimpleNav items={navItems} />
-        <main className="container-safe whitespace-breathing">
-          <div className="max-w-2xl mx-auto pb-24 md:pb-0">
-            <Button variant="secondary" onClick={goBack} className="mb-6">
-              Terug
-            </Button>
-
-            <h1>Hoe lang?</h1>
-            <p className="text-lg text-gray-600 mb-8">Minimaal 1 uur. Beschikbaar in stappen van 30 minuten.</p>
-
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-              {[1, 2, 3, 4, 5, 6, 7, 8].map((hours) => (
-                <button
-                  key={hours}
-                  onClick={() => setSelectedDuration(hours.toString())}
-                  className={`p-4 rounded-lg font-bold text-xl transition-all ${
-                    selectedDuration === hours.toString()
-                      ? 'bg-blue-600 text-white border-2 border-blue-600'
-                      : 'bg-white text-gray-900 border-2 border-gray-300 hover:border-blue-400'
-                  }`}
-                >
-                  {hours}h
-                </button>
-              ))}
-            </div>
-
-            <div className="md:static fixed bottom-20 left-0 right-0 z-40 border-t border-gray-200 bg-white/95 px-6 py-4 backdrop-blur md:border-0 md:bg-transparent md:p-0">
-              <div className="max-w-2xl mx-auto">
-                <Button onClick={handleSelectDuration} size="lg" disabled={isLoading} className="w-full md:w-auto">
-                  {isLoading ? 'Beschikbaarheid controleren...' : 'Beschikbaarheid controleren'}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </main>
-      </>
+        <FloatingActionBar>
+          <Button
+            onClick={handleSelectDateTime}
+            size="lg"
+            disabled={isLoading}
+            className="w-full md:w-auto"
+          >
+            {isLoading ? 'Beschikbaarheid controleren...' : 'Doorgaan naar fietsen'}
+          </Button>
+        </FloatingActionBar>
+      </BookingLayout>
     );
   }
 
@@ -632,72 +677,91 @@ export default function FindBikePage() {
   if (step === 'bike') {
     const favoriteBike = favoriteBikeId ? bikes.find((b) => b.id === favoriteBikeId) : null;
     return (
-      <>
-        <SimpleNav items={navItems} />
-        <main className="container-safe whitespace-breathing">
-          <div className="max-w-4xl mx-auto">
-            <Button variant="secondary" onClick={goBack} className="mb-6">
-              Terug
-            </Button>
+      <BookingLayout
+        navItems={navItems}
+        step={step}
+        title={STEP_META.bike.title}
+        description={STEP_META.bike.description}
+        onBack={goBack}
+        summary={summaryData}
+      >
+        <p className="text-sm font-semibold text-gray-500">{bikes.length} fietsen beschikbaar</p>
 
-            <h1>Kies een fiets</h1>
-            <p className="text-lg text-gray-600 mb-8">{bikes.length} fietsen beschikbaar</p>
+        {error && <Alert type="error">{error}</Alert>}
 
-              {error && <Alert type="error">{error}</Alert>}
-
-              {favoriteBike && (
-                <Card className="mb-6 bg-blue-50 border-blue-300">
-                  <CardTitle>Favoriete fiets</CardTitle>
-                  <CardDescription>
-                    {favoriteBike.name} - Code: <strong>{favoriteBike.code}</strong>
-                  </CardDescription>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <Button onClick={() => handleSelectBike(favoriteBike)}>Selecteer favoriet</Button>
-                    <Button variant="secondary" onClick={() => updateFavorites({ bikeId: null })}>Verwijderen</Button>
-                  </div>
-                </Card>
-              )}
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 staggered">
-                {bikes.map((bike) => (
-                  <Card
-                    key={bike.id}
-                    selectable
-                    selected={selectedBike?.id === bike.id}
-                    onClick={() => bike.status === 'AVAILABLE' && handleSelectBike(bike)}
-                    className="cursor-pointer"
-                  >
-                    <CardTitle className="flex items-center justify-between gap-2">
-                      <span>{bike.name}</span>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          updateFavorites({ bikeId: bike.id });
-                        }}
-                        className={`text-xs font-semibold px-2 py-1 rounded-full border ${
-                          favoriteBikeId === bike.id
-                            ? 'bg-blue-600 text-white border-blue-600'
-                            : 'bg-white text-blue-700 border-blue-300 hover:border-blue-500'
-                        }`}
-                      >
-                        {favoriteBikeId === bike.id ? 'Favoriet' : 'Als favoriet'}
-                      </button>
-                    </CardTitle>
-                  <CardDescription>
-                    Code: <strong>{bike.code}</strong>
-                    <br />
-                    Status:{' '}
-                    <strong className={bike.status === 'AVAILABLE' ? 'text-green-600' : 'text-red-600'}>
-                      {bike.status === 'AVAILABLE' ? 'Beschikbaar' : 'Buiten gebruik'}
-                    </strong>
-                  </CardDescription>
-                </Card>
-              ))}
+        {favoriteBike && (
+          <Card className="rounded-[28px] border border-blue-200 bg-blue-50/80 p-6 shadow-sm surface-card">
+            <CardTitle className="text-2xl text-blue-900">Favoriete fiets</CardTitle>
+            <CardDescription className="mt-2 text-gray-700">
+              {favoriteBike.name} - Code {favoriteBike.code}
+            </CardDescription>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <Button onClick={() => handleSelectBike(favoriteBike)} fullWidth={false} className="w-full sm:w-auto">
+                Selecteer favoriet
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => updateFavorites({ bikeId: null })}
+                fullWidth={false}
+                className="w-full sm:w-auto"
+              >
+                Verwijderen
+              </Button>
             </div>
-          </div>
-        </main>
-      </>
+          </Card>
+        )}
+
+        <div className="grid gap-5 md:grid-cols-2">
+          {bikes.map((bike) => {
+            const isSelected = selectedBike?.id === bike.id;
+            const isAvailable = bike.status === 'AVAILABLE';
+            return (
+              <Card
+                key={bike.id}
+                selectable
+                selected={isSelected}
+                onClick={() => isAvailable && handleSelectBike(bike)}
+                className={`cursor-pointer rounded-[28px] border border-white/80 bg-white/95 p-6 shadow-sm transition hover:-translate-y-0.5 surface-card ${
+                  !isAvailable ? 'opacity-70' : ''
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-2xl">{bike.name}</CardTitle>
+                  <span
+                    className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                      isAvailable ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                    }`}
+                  >
+                    {isAvailable ? 'Beschikbaar' : 'Niet beschikbaar'}
+                  </span>
+                </div>
+                <CardDescription className="mt-2 text-gray-600">
+                  Code {bike.code}
+                  <br />
+                  Locatie {selectedLocation?.name}
+                </CardDescription>
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      updateFavorites({ bikeId: bike.id });
+                    }}
+                    className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                      favoriteBikeId === bike.id
+                        ? 'bg-blue-600 text-white'
+                        : 'border border-blue-200 bg-white text-blue-700 hover:border-blue-400'
+                    }`}
+                  >
+                    {favoriteBikeId === bike.id ? 'Favoriet' : 'Als favoriet'}
+                  </button>
+                  <span className="text-gray-500">Klik om te selecteren</span>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      </BookingLayout>
     );
   }
 
@@ -712,88 +776,231 @@ export default function FindBikePage() {
     const totalCost = reservationFeeCents / 100;
 
     return (
-      <>
-        <SimpleNav items={navItems} />
-        <main className="container-safe whitespace-breathing">
-          <div className="max-w-2xl mx-auto pb-24 md:pb-0">
-            <Button variant="secondary" onClick={goBack} className="mb-6">
-              Terug
-            </Button>
+      <BookingLayout
+        navItems={navItems}
+        step={step}
+        title={STEP_META.review.title}
+        description={STEP_META.review.description}
+        onBack={goBack}
+        summary={summaryData}
+      >
+        {error && <Alert type="error">{error}</Alert>}
 
-            <h1>Controleer je reservering</h1>
-
-            {error && <Alert type="error">{error}</Alert>}
-
-            <Card className="mb-8 border-blue-300 bg-blue-50">
-              <CardTitle className="mb-4">Reserveringsgegevens</CardTitle>
-
-              <div className="space-y-4 text-lg">
-                <div>
-                  <p className="text-gray-600">Locatie</p>
-                  <p className="text-2xl font-bold">{selectedLocation?.name}</p>
-                </div>
-
-                <div>
-                  <p className="text-gray-600">Fiets</p>
-                  <p className="text-2xl font-bold">{selectedBike?.name}</p>
-                  <p className="text-gray-600">Code: {selectedBike?.code}</p>
-                </div>
-
-                <div>
-                  <p className="text-gray-600">Datum</p>
-                  <p className="text-2xl font-bold">
-                    {startDateTime.toLocaleDateString('nl-NL', {
-                      weekday: 'long',
-                      month: 'long',
-                      day: 'numeric',
-                    })}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-gray-600">Tijd</p>
-                  <p className="text-2xl font-bold">
-                    {startDateTime.toLocaleTimeString('nl-NL', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}{' '}
-                    tot{' '}
-                    {endDateTime.toLocaleTimeString('nl-NL', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-gray-600">Duur</p>
-                  <p className="text-2xl font-bold">{selectedDuration} uur</p>
-                </div>
-
-                <div>
-                  <p className="text-gray-600">Prijs per reservering</p>
-                  <p className="text-2xl font-bold">EUR {totalCost.toFixed(2)}</p>
-                  <p className="text-gray-500 text-sm">Vaste prijs, onafhankelijk van de duur</p>
-                </div>
-              </div>
-            </Card>
-
-            <div className="md:static fixed bottom-20 left-0 right-0 z-40 border-t border-gray-200 bg-white/95 px-6 py-4 backdrop-blur md:border-0 md:bg-transparent md:p-0">
-              <div className="max-w-2xl mx-auto">
-                <Button onClick={handleConfirmBooking} size="lg" disabled={isLoading} className="w-full md:w-auto">
-                  {isLoading ? 'Bezig met bevestigen...' : 'Reservering bevestigen'}
-                </Button>
-              </div>
-            </div>
-
-            <p className="text-center text-gray-600 mt-4">
-              Er wordt 30 minuten buffer toegevoegd voor en na je rit.
-            </p>
+        <Card className="rounded-[32px] border border-white/80 bg-white/95 p-6 shadow-lg surface-card">
+          <CardTitle className="text-2xl">Reserveringsgegevens</CardTitle>
+          <div className="mt-6 grid gap-6 md:grid-cols-2">
+            <ReviewField label="Locatie" value={selectedLocation?.name ?? 'Nog niet gekozen'} />
+            <ReviewField
+              label="Fiets"
+              value={
+                selectedBike ? `${selectedBike.name} - Code ${selectedBike.code}` : 'Nog niet gekozen'
+              }
+            />
+            <ReviewField
+              label="Datum"
+              value={startDateTime.toLocaleDateString('nl-NL', {
+                weekday: 'long',
+                month: 'long',
+                day: 'numeric',
+              })}
+            />
+            <ReviewField
+              label="Tijd"
+              value={`${startDateTime.toLocaleTimeString('nl-NL', {
+                hour: '2-digit',
+                minute: '2-digit',
+              })} - ${endDateTime.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })}`}
+            />
+            <ReviewField label="Duur" value={`${selectedDuration} uur`} />
+            <ReviewField label="Prijs per reservering" value={`EUR ${totalCost.toFixed(2)}`} />
           </div>
-        </main>
-      </>
+          <p className="mt-6 text-sm text-gray-500">
+            Er wordt automatisch 30 minuten buffer toegevoegd voor en na je rit.
+          </p>
+        </Card>
+
+        <FloatingActionBar>
+          <Button
+            onClick={handleConfirmBooking}
+            size="lg"
+            disabled={isLoading}
+            className="w-full md:w-auto"
+          >
+            {isLoading ? 'Bezig met bevestigen...' : 'Reservering bevestigen'}
+          </Button>
+        </FloatingActionBar>
+      </BookingLayout>
     );
   }
 
   return null;
+}
+
+type BookingLayoutProps = {
+  navItems: { label: string; href: string; icon?: ReactNode }[];
+  step: WizardStep;
+  title: string;
+  description: string;
+  summary: SummaryProps;
+  onBack?: () => void;
+  children: ReactNode;
+};
+
+function BookingLayout({ navItems, step, title, description, summary, onBack, children }: BookingLayoutProps) {
+  const normalizedStep = STEP_ORDER.includes(step) ? step : STEP_ORDER[0];
+  return (
+    <>
+      <SimpleNav items={navItems} />
+      <main className="container-safe whitespace-breathing">
+        <section className="relative overflow-hidden rounded-[32px] border border-white/80 bg-white/80 p-8 shadow-2xl surface-card">
+          <div className="pointer-events-none absolute inset-0">
+            <div className="absolute -right-16 top-6 h-48 w-48 rounded-full bg-emerald-200/40 blur-3xl" />
+            <div className="absolute left-4 -bottom-10 h-40 w-40 rounded-full bg-blue-200/40 blur-3xl" />
+          </div>
+          <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.3em] text-gray-500">Reserveringswizard</p>
+              <h1 className="mt-2 text-4xl font-semibold text-gray-900">{title}</h1>
+              <p className="mt-2 max-w-3xl text-lg text-gray-600">{description}</p>
+            </div>
+          </div>
+          <div className="mt-6 overflow-x-auto">
+            <StepTracker currentStep={normalizedStep} />
+          </div>
+        </section>
+        <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="space-y-6">
+            {onBack && (
+              <Button
+                variant="secondary"
+                onClick={onBack}
+                fullWidth={false}
+                size="md"
+                className="w-full sm:w-auto"
+              >
+                Terug
+              </Button>
+            )}
+            {children}
+          </div>
+          <SummaryPanel {...summary} />
+        </div>
+      </main>
+    </>
+  );
+}
+
+function StepTracker({ currentStep }: { currentStep: WizardStep }) {
+  const currentIndex = STEP_ORDER.indexOf(currentStep);
+  return (
+    <ol className="flex flex-wrap gap-4">
+      {STEP_ORDER.map((step, index) => {
+        const meta = STEP_META[step];
+        const isActive = index === currentIndex;
+        const isComplete = index < currentIndex;
+        return (
+          <li
+            key={step}
+            className={`flex items-center gap-3 rounded-full border px-4 py-2 text-left text-sm ${
+              isActive
+                ? 'border-blue-500 bg-blue-50 text-blue-900'
+                : isComplete
+                ? 'border-emerald-400 bg-emerald-50 text-emerald-900'
+                : 'border-white/60 bg-white/70 text-gray-500'
+            }`}
+          >
+            <span
+              className={`inline-flex h-8 w-8 items-center justify-center rounded-full text-base font-semibold ${
+                isComplete ? 'bg-emerald-500 text-white' : isActive ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'
+              }`}
+            >
+              {isComplete ? 'OK' : index + 1}
+            </span>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em]">{meta.title}</p>
+              <p className="text-[11px] text-gray-600">{meta.description}</p>
+            </div>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+function SummaryPanel({ location, date, time, duration, bike, feeCents, isClosed }: SummaryProps) {
+  const hasDate = Boolean(date);
+  const summaryDate = hasDate
+    ? format(new Date(date), "EEEE d MMMM", { locale: nl })
+    : 'Nog niet gekozen';
+
+  let timeWindow = 'Nog niet gekozen';
+  if (date && time) {
+    const [h, m] = time.split(':').map(Number);
+    if (!Number.isNaN(h)) {
+      const start = new Date(date);
+      start.setHours(h, m, 0, 0);
+      const end = new Date(start);
+      end.setHours(end.getHours() + parseInt(duration || '1'));
+      timeWindow = `${start.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })} - ${end.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })}`;
+    }
+  }
+
+  const feeValue = `EUR ${(feeCents / 100).toFixed(2)}`;
+
+  return (
+    <aside className="rounded-[32px] border border-white/80 bg-white/95 p-6 shadow-lg surface-card">
+      <CardTitle className="text-xl text-gray-900">Overzicht</CardTitle>
+      <CardDescription className="mt-1 text-gray-500">Je keuzes tot nu toe</CardDescription>
+      <div className="mt-4 space-y-4">
+        <SummaryRow label="Locatie" value={location?.name ?? 'Nog niet gekozen'} />
+        <SummaryRow label="Datum" value={summaryDate} />
+        <SummaryRow label="Tijd" value={timeWindow} />
+        <SummaryRow label="Duur" value={`${duration} uur`} />
+        <SummaryRow
+          label="Fiets"
+          value={bike ? `${bike.name} (code ${bike.code})` : 'Nog niet gekozen'}
+        />
+        <SummaryRow
+          label="Status"
+          value={
+            isClosed === null ? 'Onbekend' : isClosed ? 'Gesloten op deze dag' : 'Open op deze dag'
+          }
+          muted={isClosed === true}
+        />
+      </div>
+      <div className="mt-6 rounded-3xl border border-emerald-200 bg-emerald-50/80 p-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-600">
+          Tarief
+        </p>
+        <p className="mt-2 text-3xl font-semibold text-emerald-900">{feeValue}</p>
+        <p className="text-sm text-emerald-700">Per reservering, ongeacht duur.</p>
+      </div>
+    </aside>
+  );
+}
+
+function SummaryRow({ label, value, muted = false }: { label: string; value: string; muted?: boolean }) {
+  return (
+    <div>
+      <p className="text-xs font-semibold uppercase tracking-[0.3em] text-gray-400">{label}</p>
+      <p className={`text-base font-semibold ${muted ? 'text-rose-600' : 'text-gray-900'}`}>{value}</p>
+    </div>
+  );
+}
+
+function ReviewField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-white/80 bg-white/95 p-4 shadow-sm surface-card">
+      <p className="text-xs font-semibold uppercase tracking-[0.3em] text-gray-400">{label}</p>
+      <p className="mt-2 text-lg font-semibold text-gray-900">{value}</p>
+    </div>
+  );
+}
+
+function FloatingActionBar({ children }: { children: ReactNode }) {
+  return (
+    <div className="fixed bottom-20 left-0 right-0 z-40 border-t border-white/70 bg-white/95 px-6 py-4 backdrop-blur md:static md:border-0 md:bg-transparent md:p-0">
+      <div className="mx-auto max-w-2xl">{children}</div>
+    </div>
+  );
 }
