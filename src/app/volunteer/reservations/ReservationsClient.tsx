@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { SimpleNav } from '@/components/simple-nav';
@@ -8,6 +8,7 @@ import { Button } from '@/components/button';
 import { Card, CardTitle, CardDescription } from '@/components/card';
 import { Alert } from '@/components/alert';
 import { format } from 'date-fns';
+import { nl } from 'date-fns/locale';
 import { HomeIcon, BikeIcon, CalendarIcon, AlertIcon, PinIcon, BellIcon } from '@/components/nav-icons';
 
 interface Reservation {
@@ -18,8 +19,66 @@ interface Reservation {
   location_name?: string;
   start_datetime: string;
   end_datetime: string;
-  status: string;
+  status: 'BOOKED' | 'COMPLETED' | 'CANCELED';
 }
+
+const STATUS_CONFIG: Record<
+  Reservation['status'],
+  {
+    label: string;
+    badgeClass: string;
+    dotClass: string;
+    accentClass: string;
+    pillColor: string;
+  }
+> = {
+  BOOKED: {
+    label: 'Geboekt',
+    badgeClass: 'bg-emerald-100 text-emerald-900 border border-emerald-200',
+    dotClass: 'bg-emerald-500',
+    accentClass: 'from-emerald-50/70 via-transparent to-transparent',
+    pillColor: 'text-emerald-700',
+  },
+  COMPLETED: {
+    label: 'Afgerond',
+    badgeClass: 'bg-blue-100 text-blue-900 border border-blue-200',
+    dotClass: 'bg-blue-500',
+    accentClass: 'from-blue-50/70 via-transparent to-transparent',
+    pillColor: 'text-blue-700',
+  },
+  CANCELED: {
+    label: 'Geannuleerd',
+    badgeClass: 'bg-gray-200 text-gray-800 border border-gray-300',
+    dotClass: 'bg-gray-500',
+    accentClass: 'from-gray-100/80 via-transparent to-transparent',
+    pillColor: 'text-gray-700',
+  },
+};
+
+type InfoPillProps = {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  accentClass?: string;
+};
+
+function InfoPill({ icon, label, value, accentClass = 'text-gray-900' }: InfoPillProps) {
+  return (
+    <div className="rounded-[22px] border border-white/80 bg-white/95 p-4 shadow-sm">
+      <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-gray-400">
+        <span className="text-gray-300">{icon}</span>
+        {label}
+      </div>
+      <p className={`mt-2 text-lg font-semibold ${accentClass}`}>{value}</p>
+    </div>
+  );
+}
+
+const capitalize = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
+const formatDutchDate = (date: Date) => capitalize(format(date, "EEEE d MMMM", { locale: nl }));
+const formatDutchMonth = (date: Date) => format(date, 'MMM', { locale: nl }).toUpperCase();
+const formatDutchDay = (date: Date) => format(date, 'd', { locale: nl });
+const formatDutchTime = (date: Date) => format(date, 'HH:mm', { locale: nl });
 
 export default function ReservationsPage() {
   const { user, token } = useAuth();
@@ -170,96 +229,95 @@ export default function ReservationsPage() {
         )}
 
         {/* Reservations List */}
-        <div className="space-y-4 mt-6">
+        <div className="mt-6 space-y-5">
           {activeTab.map((res) => {
             const startDate = new Date(res.start_datetime);
             const endDate = new Date(res.end_datetime);
             const isUpcoming = startDate > now && res.status === 'BOOKED';
-            const statusColor =
-              res.status === 'BOOKED'
-                ? 'bg-blue-50 border-blue-200'
-                : res.status === 'COMPLETED'
-                ? 'bg-green-50 border-green-200'
-                : 'bg-gray-50 border-gray-200';
-            const statusLabel =
-              res.status === 'BOOKED'
-                ? 'Geboekt'
-                : res.status === 'COMPLETED'
-                ? 'Voltooid'
-                : 'Geannuleerd';
+            const statusConfig = STATUS_CONFIG[res.status] ?? STATUS_CONFIG.BOOKED;
+            const locationLabel = res.location_name || `Locatie #${res.location_id}`;
+            const bikeLabel = res.bike_name || `Fiets #${res.bike_id}`;
 
             return (
-              <Card key={res.id} className={`${statusColor} border border-white/70 shadow-lg surface-card`}>
-                <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-start mb-4">
-                  <div className="min-w-0">
-                    <div className="text-2xl sm:text-3xl font-bold text-gray-900">
-                      {format(startDate, 'MMMM d')}
-                    </div>
-                    <div className="text-xl sm:text-2xl font-bold text-gray-900 mt-2">
-                      {format(startDate, 'h:mm a')} tot {format(endDate, 'h:mm a')}
-                    </div>
-                    {res.location_name && (
-                      <div className="text-base sm:text-lg text-gray-600 mt-3 break-words flex items-center gap-2">
-                        <span className="text-gray-500"><PinIcon /></span>
-                        <span>{res.location_name}</span>
+              <Card
+                key={res.id}
+                className="relative overflow-hidden rounded-[32px] border border-white/80 bg-white/95 p-6 shadow-xl surface-card"
+              >
+                <div className={`pointer-events-none absolute inset-0 bg-gradient-to-r ${statusConfig.accentClass}`} />
+                <div className="relative">
+                  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="rounded-3xl bg-white/90 px-4 py-3 text-center shadow-sm surface-card">
+                        <div className="text-xs font-semibold uppercase tracking-[0.3em] text-gray-500">
+                          {formatDutchMonth(startDate)}
+                        </div>
+                        <div className="text-3xl font-bold text-gray-900">{formatDutchDay(startDate)}</div>
                       </div>
-                    )}
-                    {res.bike_name && (
-                      <div className="text-base sm:text-lg text-gray-600 break-words flex items-center gap-2">
-                        <span className="text-gray-500"><BikeIcon /></span>
-                        <span>{res.bike_name}</span>
+                      <div>
+                        <p className="text-[11px] uppercase tracking-[0.3em] text-gray-400">Tijdslot</p>
+                        <p className="text-2xl font-semibold text-gray-900">{formatDutchDate(startDate)}</p>
+                        <p className="text-lg text-gray-600">
+                          {formatDutchTime(startDate)} - {formatDutchTime(endDate)}
+                        </p>
                       </div>
-                    )}
+                    </div>
+                    <span
+                      className={`inline-flex items-center gap-2 self-start rounded-full px-4 py-2 text-sm font-semibold ${statusConfig.badgeClass}`}
+                    >
+                      <span className={`h-2.5 w-2.5 rounded-full ${statusConfig.dotClass}`} />
+                      {statusConfig.label}
+                    </span>
                   </div>
-                  <span
-                    className={`self-start sm:self-auto px-4 sm:px-6 py-2 sm:py-3 rounded-full text-base sm:text-lg font-bold whitespace-nowrap ${
-                      res.status === 'BOOKED'
-                        ? 'bg-blue-600 text-white'
-                        : res.status === 'COMPLETED'
-                        ? 'bg-green-600 text-white'
-                        : 'bg-gray-400 text-white'
-                    }`}
-                  >
-                    {statusLabel}
-                  </span>
+
+                  <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+                    <InfoPill
+                      icon={<PinIcon />}
+                      label="Locatie"
+                      value={locationLabel}
+                      accentClass={statusConfig.pillColor}
+                    />
+                    <InfoPill icon={<BikeIcon />} label="Fiets" value={bikeLabel} />
+                    <InfoPill icon={<CalendarIcon />} label="Status" value={statusConfig.label} />
+                  </div>
+
+                  {confirmCancel === res.id ? (
+                    <div className="mt-6 rounded-3xl border-2 border-red-200 bg-red-50 p-6">
+                      <p className="text-lg font-semibold text-red-900">
+                        Weet je het zeker? Annuleren kan tot 24 uur van tevoren.
+                      </p>
+                      <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                        <Button
+                          variant="danger"
+                          onClick={() => handleCancelReservation(res.id)}
+                          className="flex-1"
+                        >
+                          Ja, annuleren
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          onClick={() => setConfirmCancel(null)}
+                          className="flex-1"
+                        >
+                          Toch behouden
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    isUpcoming && (
+                      <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-sm text-gray-500">Wil je deze rit niet meer rijden?</p>
+                        <Button
+                          variant="danger"
+                          onClick={() => setConfirmCancel(res.id)}
+                          size="lg"
+                          className="sm:w-auto"
+                        >
+                          Deze rit annuleren
+                        </Button>
+                      </div>
+                    )
+                  )}
                 </div>
-
-                {/* Cancel Confirmation Dialog */}
-                {confirmCancel === res.id && (
-                  <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-6 mt-6">
-                    <p className="text-xl font-bold text-red-900 mb-4">
-                      Weet je het zeker? Je kunt alleen tot 24 uur voor je rit annuleren.
-                    </p>
-                    <div className="flex gap-4">
-                      <Button
-                        variant="danger"
-                        onClick={() => handleCancelReservation(res.id)}
-                        className="flex-1"
-                      >
-                        Ja, reservering annuleren
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        onClick={() => setConfirmCancel(null)}
-                        className="flex-1"
-                      >
-                        Reservering behouden
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Action Buttons */}
-                {isUpcoming && confirmCancel !== res.id && (
-                  <Button
-                    variant="danger"
-                    onClick={() => setConfirmCancel(res.id)}
-                    size="lg"
-                    className="mt-6"
-                  >
-                    Deze rit annuleren
-                  </Button>
-                )}
               </Card>
             );
           })}

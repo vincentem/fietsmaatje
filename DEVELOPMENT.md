@@ -4,6 +4,52 @@
 
 This is a full-stack Next.js application for managing volunteer bike reservations with a focus on duo bikes (2-person bikes) for disabled riders. The system implements complex availability logic with time buffers and location-based operating hours.
 
+## Branching & Deployment Workflow
+
+Follow this workflow whenever you start a new piece of development that should land in `main` and be deployed to Vercel.
+
+### 1. Create a feature branch
+
+```bash
+git fetch origin
+git switch main
+git pull --ff-only
+git switch -c <feature-branch-name>
+```
+
+The current scratch branch is `testing-deployment`; push it (or any new branch) with:
+
+```bash
+git push -u origin <feature-branch-name>
+```
+
+### 2. Preview deployments on Vercel
+
+- The GitHub→Vercel integration automatically creates a **Preview Deployment** for every branch once it is pushed.
+- Each subsequent push to the same branch updates the same preview URL. Share that URL to review work without touching production.
+- Pull Requests on GitHub show the preview status; wait for the green check before merging.
+
+### 3. Optional dedicated testing project
+
+If you want a stable “testing” environment that mirrors production without affecting it:
+
+1. Duplicate the existing Vercel project in the Vercel dashboard and name it something like `fietsmaatje-testing`.
+2. Set its Production Branch to a long‑lived branch such as `staging` (which you create from `main`).
+3. Update the project’s Environment Variables so the testing project points to the correct Neon database branch (see below).
+4. Deploy feature branches to this testing project by opening PRs that target `staging` instead of `main`, or by manually triggering Vercel deployments from the dashboard.
+
+### 4. Neon database branches
+
+- Create a Neon branch from the production database for each major feature if you need isolated data (`neonctl branch create my-feature` or through the Neon UI).
+- Run migrations against that branch locally, then set the resulting connection string (`DATABASE_URL`, `DIRECT_URL`) inside the Vercel Preview or testing project.
+- When the feature is merged into `main`, promote or rebase the Neon branch back into the primary branch, then update Vercel’s Production environment variables if schema changes occurred.
+
+### 5. Merge back to `main`
+
+1. Rebase your feature branch on top of `origin/main` to keep history clean.
+2. Run automated checks plus any manual QA on the preview deployment.
+3. Merge via Pull Request once everything passes. Vercel will redeploy the production environment automatically.
+
 ## Architecture
 
 ### Frontend Layer
