@@ -248,7 +248,7 @@ export default function ReportIssuePage() {
             </div>
             <div className="rounded-[24px] border border-white/70 bg-white/90 p-5 shadow-lg surface-card">
               <p className="text-xs uppercase tracking-[0.3em] text-gray-400">Gemiddelde reactietijd</p>
-              <p className="mt-2 text-3xl font-semibold text-emerald-700">< 2 uur</p>
+              <p className="mt-2 text-3xl font-semibold text-emerald-700">&lt; 2 uur</p>
               <p className="text-sm text-gray-500">Een beheerder neemt snel contact op.</p>
             </div>
           </div>
